@@ -1,0 +1,7 @@
+# Archivos que NO se incluyen en el paquete publicado al Comfy Registry
+# (sintaxis tipo .gitignore). El código, webapp/, LICENSE, NOTICE y README sí se publican.
+tests/
+.github/
+__pycache__/
+*.pyc
+.gitattributes

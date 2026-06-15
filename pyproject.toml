@@ -7,7 +7,7 @@ authors = [
     { name = "Juan Gea", email = "juangea@bone-studio.com" },
 ]
 requires-python = ">=3.10"
-license = { text = "GPL-3.0-only" }
+license = { file = "LICENSE" }
 readme = "README.md"
 # Sin dependencias externas: solo la stdlib de Python. aiohttp/PromptServer los aporta ComfyUI.
 dependencies = []
@@ -22,6 +22,6 @@ Repository = "https://github.com/juangea/bs-comfyui-model-manager"
 
 # Metadatos para el ComfyUI Registry (comfy-cli). No afecta a la ejecución.
 [tool.comfy]
-PublisherId = "enob-studio"
+PublisherId = "bonestudio"
 DisplayName = "Bone-Studio Model Manager"
 Icon = ""
