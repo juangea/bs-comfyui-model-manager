@@ -34,6 +34,7 @@ const I18N = {
     btn_refresh: "Refresh", ph_filter_local: "Search: multiple terms (e.g. wan fp16)",
     th_location: "Location", th_actions: "Actions",
     btn_cancel: "Cancel", btn_accept: "Accept", btn_confirm: "Confirm",
+    help_title: "Help", help_tooltip: "Help",
     provider_soon: "(coming soon)",
     st_enter_repo: "Enter a repository.", st_analyzing: "Analyzing…",
     st_repo_loaded: "{repo} @ {rev} — {n} files.",
@@ -73,6 +74,7 @@ const I18N = {
     btn_refresh: "Refrescar", ph_filter_local: "Buscar: varios términos (p.ej. wan fp16)",
     th_location: "Ubicación", th_actions: "Acciones",
     btn_cancel: "Cancelar", btn_accept: "Aceptar", btn_confirm: "Confirmar",
+    help_title: "Ayuda", help_tooltip: "Ayuda",
     provider_soon: "(próximamente)",
     st_enter_repo: "Introduce un repositorio.", st_analyzing: "Analizando…",
     st_repo_loaded: "{repo} @ {rev} — {n} archivos.",
@@ -96,6 +98,51 @@ const I18N = {
     st_marked: "Marcado «{path}» → {cat}. Revisa y pulsa «Descargar seleccionados».",
     st_folders_err: "No se pudieron cargar las carpetas: {e}",
   },
+};
+
+// Documentación breve (bilingüe) que abre el icono de ayuda.
+const HELP = {
+  en: `
+    <p><b>Bone-Studio Model Manager</b> downloads and organizes your ComfyUI models from a single panel.
+    No HuggingFace API key required.</p>
+    <h4>Download</h4>
+    <p>Paste a HuggingFace repo (<code>owner/name</code>) or URL and click <b>Analyze</b>. Tick the files
+    you want, choose the <b>destination folder</b> (and an optional <b>subfolder</b>), rename them if you
+    like, and click <b>Download selected</b>. Large files download in the background with progress, speed
+    and automatic resume. The filter box accepts several terms (e.g. <code>fp16 2.2</code>) and shows files
+    matching any of them.</p>
+    <h4>From workflow</h4>
+    <p>Click <b>Scan workflow</b> to detect models that the currently open workflow declares but you don't
+    have installed. Press <b>Load &amp; mark</b> on one and it opens its repository in the Download tab with
+    the exact file pre-selected and its destination set — just hit Download.</p>
+    <h4>My models</h4>
+    <p>A unified list of every local model, grouped by folder — including paths added via
+    <code>extra_model_paths.yaml</code> (tagged <span class="badge extra">extra</span>). <b>Move</b> a model
+    to another folder (with an optional subfolder) or <b>Delete</b> it. Search with multiple terms.</p>
+    <p class="muted">Switch language with EN/ES (top right). A Bone-Studio tool —
+    <a href="https://bone-studio.com" target="_blank" rel="noopener noreferrer">bone-studio.com</a>.</p>
+  `,
+  es: `
+    <p><b>Bone-Studio Model Manager</b> descarga y organiza tus modelos de ComfyUI desde un solo panel.
+    No necesita API key de HuggingFace.</p>
+    <h4>Descargar</h4>
+    <p>Pega un repositorio de HuggingFace (<code>owner/nombre</code>) o una URL y pulsa <b>Analizar</b>.
+    Marca los archivos que quieras, elige la <b>carpeta destino</b> (y una <b>subcarpeta</b> opcional),
+    renómbralos si quieres y pulsa <b>Descargar seleccionados</b>. Los archivos grandes se descargan en
+    segundo plano con progreso, velocidad y reanudación automática. El filtro admite varios términos
+    (p. ej. <code>fp16 2.2</code>) y muestra los que contengan cualquiera de ellos.</p>
+    <h4>Del workflow</h4>
+    <p>Pulsa <b>Escanear workflow</b> para detectar los modelos que el workflow abierto declara y no tienes
+    instalados. Con <b>Cargar y marcar</b> se abre su repositorio en la pestaña Descargar con el archivo
+    exacto ya seleccionado y su destino fijado — solo te queda darle a Descargar.</p>
+    <h4>Mis modelos</h4>
+    <p>Una lista unificada de todos tus modelos locales, agrupados por carpeta — incluidas las rutas
+    añadidas con <code>extra_model_paths.yaml</code> (marcadas como <span class="badge extra">extra</span>).
+    <b>Mueve</b> un modelo a otra carpeta (con subcarpeta opcional) o <b>bórralo</b>. Busca con varios
+    términos.</p>
+    <p class="muted">Cambia el idioma con EN/ES (arriba a la derecha). Una herramienta de Bone-Studio —
+    <a href="https://bone-studio.com" target="_blank" rel="noopener noreferrer">bone-studio.com</a>.</p>
+  `,
 };
 
 let currentLang = (localStorage.getItem("bsmm_lang") || "en").toLowerCase();
@@ -126,6 +173,7 @@ function setLang(lang) {
 // Re-renderiza el contenido dinámico al cambiar de idioma.
 function refreshDynamic() {
   renderProviders();
+  if (!$("#help-modal").classList.contains("hidden")) openHelp();  // reescribe la ayuda en el nuevo idioma
   if (state.files.length) renderFiles(); else updateSummary();
   pollOnce();
   const active = document.querySelector(".view.active");
@@ -214,6 +262,16 @@ function showConfirm(title, bodyHTML, okLabel, danger = false) {
     ok.addEventListener("click", onOk);
     cancel.addEventListener("click", onCancel);
   });
+}
+
+// ---------- ayuda ----------
+function openHelp() {
+  $("#help-title").textContent = t("help_title");
+  $("#help-body").innerHTML = HELP[currentLang] || HELP.en;
+  $("#help-modal").classList.remove("hidden");
+}
+function closeHelp() {
+  $("#help-modal").classList.add("hidden");
 }
 
 // ---------- carga inicial ----------
@@ -664,6 +722,9 @@ function wireEvents() {
   $("#local-filter").addEventListener("input", () => loadLocal());
   $("#scan-workflow").addEventListener("click", loadMissing);
   $$(".lang-btn").forEach((b) => b.addEventListener("click", () => setLang(b.dataset.lang)));
+  $("#help-btn").addEventListener("click", openHelp);
+  $("#help-close").addEventListener("click", closeHelp);
+  $("#help-modal").addEventListener("click", (e) => { if (e.target.id === "help-modal") closeHelp(); });
 }
 
 async function init() {

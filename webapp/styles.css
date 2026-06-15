@@ -156,8 +156,31 @@ h1, h2, h3, h4 { font-family: var(--font-display); color: var(--text-strong); fo
 .tab:hover { color: var(--text-strong); background: rgba(250, 240, 220, 0.05); }
 .tab.active { color: var(--text-strong); background: var(--surface-inset); border-color: var(--border-default); }
 
+.header-right {
+  margin-left: auto;            /* ayuda + idioma juntos al extremo derecho del header */
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.help-btn {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1px solid var(--border-default);
+  background: transparent;
+  color: var(--text-muted);
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition: color .12s var(--ease-standard), border-color .12s var(--ease-standard);
+}
+.help-btn:hover { color: var(--text-strong); border-color: var(--text-accent); }
+
 .lang-toggle {
-  margin-left: auto;            /* empuja el toggle al extremo derecho del header */
   display: inline-flex;
   border: 1px solid var(--border-default);
   border-radius: var(--radius-sm);
@@ -324,3 +347,14 @@ input[type="checkbox"] { accent-color: var(--red-500); width: 15px; height: 15px
 .modal-body { color: var(--text-body); margin-bottom: 16px; word-break: break-word; }
 .modal-body .muted { font-family: var(--font-mono); font-size: 11px; }
 .modal-actions { display: flex; justify-content: flex-end; gap: 8px; }
+
+/* ---------- Ayuda / documentación ---------- */
+.help-card { width: min(680px, 94vw); max-height: 86vh; display: flex; flex-direction: column; }
+.help-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.help-head .modal-title { margin: 0; flex: 1; }
+.help-body { overflow-y: auto; color: var(--text-body); line-height: 1.55; }
+.help-body h4 { font-family: var(--font-display); font-size: 13px; text-transform: uppercase; letter-spacing: 0.03em; color: var(--text-accent); margin: 14px 0 4px; }
+.help-body p { margin: 0 0 8px; }
+.help-body code { font-family: var(--font-mono); font-size: 11.5px; background: rgba(250, 240, 220, 0.08); padding: 1px 5px; border-radius: 4px; }
+.help-body a { color: var(--red-300); }
+.help-body .badge { vertical-align: middle; }

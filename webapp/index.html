@@ -26,9 +26,12 @@
       <button class="tab" data-view="workflow" data-i18n="tab_workflow">From workflow</button>
       <button class="tab" data-view="manage" data-i18n="tab_manage">My models</button>
     </nav>
-    <div class="lang-toggle" role="group" aria-label="Language">
-      <button class="lang-btn" data-lang="en">EN</button>
-      <button class="lang-btn" data-lang="es">ES</button>
+    <div class="header-right">
+      <button id="help-btn" class="help-btn" aria-label="Help" data-i18n-title="help_tooltip" title="Help / Ayuda">?</button>
+      <div class="lang-toggle" role="group" aria-label="Language">
+        <button class="lang-btn" data-lang="en">EN</button>
+        <button class="lang-btn" data-lang="es">ES</button>
+      </div>
     </div>
   </header>
 
@@ -132,6 +135,17 @@
       <div id="local-list"></div>
     </div>
   </section>
+
+  <!-- Help / documentation -->
+  <div id="help-modal" class="modal hidden">
+    <div class="modal-card help-card">
+      <div class="help-head">
+        <div id="help-title" class="modal-title"></div>
+        <button id="help-close" class="btn small" aria-label="Close">✕</button>
+      </div>
+      <div id="help-body" class="help-body"></div>
+    </div>
+  </div>
 
   <!-- Generic modal dialog -->
   <div id="modal" class="modal hidden">
