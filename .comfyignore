@@ -5,3 +5,5 @@ tests/
 __pycache__/
 *.pyc
 .gitattributes
+# Seguridad: nunca publicar la bitácora de desarrollo aunque se publique desde el repo de dev.
+HANDOFF.md
