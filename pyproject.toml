@@ -1,0 +1,27 @@
+[project]
+name = "bs-comfyui-model-manager"
+version = "0.1.0"
+description = "Descarga (HuggingFace, sin API key) y gestiona los modelos de ComfyUI desde una interfaz propia."
+authors = [
+    { name = "Enob-Studio S.L." },
+    { name = "Juan Gea", email = "juangea@bone-studio.com" },
+]
+requires-python = ">=3.10"
+license = { text = "GPL-3.0-only" }
+readme = "README.md"
+# Sin dependencias externas: solo la stdlib de Python. aiohttp/PromptServer los aporta ComfyUI.
+dependencies = []
+classifiers = [
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+
+[project.urls]
+Repository = "https://github.com/juangea/bs-comfyui-model-manager"
+
+# Metadatos para el ComfyUI Registry (comfy-cli). No afecta a la ejecución.
+[tool.comfy]
+PublisherId = "enob-studio"
+DisplayName = "Bone-Studio Model Manager"
+Icon = ""

@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bone-Studio Model Manager</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="https://bone-studio.com" target="_blank" rel="noopener noreferrer"
+       data-i18n-title="brand_link_title" title="Go to bone-studio.com">
+      <svg class="brand-logo" viewBox="0 0 256 256" role="img" aria-label="Bone-Studio Model Manager">
+        <circle cx="128" cy="128" r="124" fill="#AC1F23" />
+        <text x="128" y="150" text-anchor="middle"
+              font-family="Jost, 'Century Gothic', 'Arial Rounded MT Bold', Arial, sans-serif"
+              font-weight="700" font-size="62" letter-spacing="-1" fill="#FAF0DC">BS-MM</text>
+      </svg>
+      <div class="brand-words">
+        <div class="brand-name">Bone-Studio</div>
+        <div class="brand-app">Model Manager</div>
+      </div>
+    </a>
+    <nav class="tabs">
+      <button class="tab active" data-view="download" data-i18n="tab_download">Download</button>
+      <button class="tab" data-view="workflow" data-i18n="tab_workflow">From workflow</button>
+      <button class="tab" data-view="manage" data-i18n="tab_manage">My models</button>
+    </nav>
+    <div class="lang-toggle" role="group" aria-label="Language">
+      <button class="lang-btn" data-lang="en">EN</button>
+      <button class="lang-btn" data-lang="es">ES</button>
+    </div>
+  </header>
+
+  <!-- ============ VIEW: DOWNLOAD ============ -->
+  <section id="view-download" class="view active">
+    <div class="panel">
+      <div class="row">
+        <label class="field">
+          <span data-i18n="lbl_provider">Provider</span>
+          <select id="provider"></select>
+        </label>
+        <label class="field grow">
+          <span data-i18n="lbl_repo">Repository (slug or URL)</span>
+          <input id="slug" type="text" placeholder="Comfy-Org/SCAIL-2  ·  https://huggingface.co/Kijai/WanVideo_comfy" />
+        </label>
+        <label class="field">
+          <span data-i18n="lbl_revision">Revision</span>
+          <input id="revision" type="text" placeholder="main" />
+        </label>
+        <button id="analyze" class="btn primary" data-i18n="btn_analyze">Analyze</button>
+      </div>
+      <div id="repo-status" class="status"></div>
+    </div>
+
+    <div id="files-panel" class="panel hidden">
+      <div class="row toolbar">
+        <input id="files-filter" type="text" class="filter" data-i18n-ph="ph_filter_files"
+               placeholder="Filter: multiple terms (e.g. fp16 2.2 2_2)" />
+        <span class="spacer"></span>
+        <button id="sel-weights" class="btn small" data-i18n="btn_sel_weights">Select weights</button>
+        <button id="sel-all" class="btn small" data-i18n="btn_sel_all">All</button>
+        <button id="sel-none" class="btn small" data-i18n="btn_sel_none">None</button>
+      </div>
+      <div class="row toolbar">
+        <label class="field inline">
+          <span data-i18n="lbl_apply_selected">Apply to selected →</span>
+          <select id="bulk-category"></select>
+        </label>
+        <input id="bulk-subfolder" type="text" data-i18n-ph="ph_subfolder" placeholder="subfolder (optional)" />
+        <button id="bulk-apply" class="btn small" data-i18n="btn_apply_dest">Apply destination</button>
+      </div>
+      <div class="table-wrap">
+        <table id="files-table">
+          <thead>
+            <tr>
+              <th class="c-check"><input id="check-head" type="checkbox" /></th>
+              <th class="c-file" data-i18n="th_file">File</th>
+              <th class="c-size" data-i18n="th_size">Size</th>
+              <th class="c-dest" data-i18n="th_dest">Destination folder</th>
+              <th class="c-name" data-i18n="th_saveas">Save as</th>
+            </tr>
+          </thead>
+          <tbody id="files-body"></tbody>
+        </table>
+      </div>
+      <div class="row footer">
+        <span id="files-summary" class="muted"></span>
+        <span class="spacer"></span>
+        <button id="download-btn" class="btn primary" data-i18n="btn_download_sel">Download selected</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="row">
+        <h3 data-i18n="h_downloads">Downloads</h3>
+        <span class="spacer"></span>
+        <button id="clear-finished" class="btn small" data-i18n="btn_clear_finished">Clear finished</button>
+      </div>
+      <div id="jobs"></div>
+    </div>
+  </section>
+
+  <!-- ============ VIEW: FROM WORKFLOW ============ -->
+  <section id="view-workflow" class="view">
+    <div class="panel">
+      <div class="row toolbar">
+        <button id="scan-workflow" class="btn primary" data-i18n="btn_scan_wf">Scan workflow</button>
+        <span class="spacer"></span>
+        <span id="missing-summary" class="muted"></span>
+      </div>
+      <div id="missing-status" class="status"></div>
+      <p class="muted" style="margin:6px 0 0" data-i18n="wf_desc">
+        Detects the models the open workflow declares and you don't have installed. Pick one to load
+        its repository and mark it, ready to download.
+      </p>
+      <div id="missing-list" style="margin-top:10px"></div>
+    </div>
+  </section>
+
+  <!-- ============ VIEW: MY MODELS ============ -->
+  <section id="view-manage" class="view">
+    <div class="panel">
+      <div class="row toolbar">
+        <button id="refresh-local" class="btn" data-i18n="btn_refresh">Refresh</button>
+        <input id="local-filter" type="text" class="filter" data-i18n-ph="ph_filter_local"
+               placeholder="Search: multiple terms (e.g. wan fp16)" />
+        <span class="spacer"></span>
+        <span id="local-summary" class="muted"></span>
+      </div>
+      <div id="local-status" class="status"></div>
+      <div id="local-list"></div>
+    </div>
+  </section>
+
+  <!-- Generic modal dialog -->
+  <div id="modal" class="modal hidden">
+    <div class="modal-card">
+      <div id="modal-title" class="modal-title"></div>
+      <div id="modal-body" class="modal-body"></div>
+      <div class="modal-actions">
+        <button id="modal-cancel" class="btn" data-i18n="btn_cancel">Cancel</button>
+        <button id="modal-ok" class="btn primary" data-i18n="btn_accept">Accept</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
