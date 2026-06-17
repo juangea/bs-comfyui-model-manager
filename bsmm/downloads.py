@@ -69,6 +69,16 @@ class DownloadManager:
         self._executor = ThreadPoolExecutor(max_workers=max_workers,
                                             thread_name_prefix="bs-dl")
         self._counter = 0
+        # Callback opcional que se llama al COMPLETAR una descarga (lo fija routes.py para
+        # invalidar la caché de folder_paths y que ComfyUI vea el modelo nuevo).
+        self.on_complete = None
+
+    def _fire_complete(self, job):
+        if self.on_complete:
+            try:
+                self.on_complete(job)
+            except Exception:
+                pass
 
     def enqueue(self, *, url, headers, dest, total=0, provider="", repo="",
                 revision="", path="", category="", filename=""):
@@ -120,6 +130,7 @@ class DownloadManager:
         if os.path.exists(job.dest) and not os.path.exists(job.part):
             job.state = "done"
             job.downloaded = job.total or os.path.getsize(job.dest)
+            self._fire_complete(job)
             return
 
         headers = dict(job.headers)
@@ -137,6 +148,7 @@ class DownloadManager:
                 job.downloaded = existing
                 job.total = job.total or existing
                 job.state = "done"
+                self._fire_complete(job)
                 return
             raise RuntimeError(f"HTTP {exc.code} al descargar {job.path}")
         except urllib.error.URLError as exc:
@@ -179,6 +191,7 @@ class DownloadManager:
         os.replace(job.part, job.dest)  # rename atómico
         job.speed = 0.0
         job.state = "done"
+        self._fire_complete(job)
 
     @staticmethod
     def _update_speed(job):

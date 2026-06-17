@@ -337,6 +337,8 @@ input[type="checkbox"] { accent-color: var(--red-500); width: 15px; height: 15px
 /* ---------- Manager local ---------- */
 .cat-group { margin-top: 14px; }
 .cat-group h4 { margin: 0 0 6px; font-family: var(--font-display); font-size: 13px; letter-spacing: 0.03em; color: var(--text-accent); text-transform: uppercase; }
+.model-name { color: var(--text-body); word-break: break-all; }
+.model-sub { color: var(--text-faint); font-size: 11px; font-family: var(--font-mono); margin-top: 2px; word-break: break-all; }
 .move-form { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin: 4px 0; padding: 9px; background: var(--surface-raised); border: 1px dashed var(--border-default); border-radius: var(--radius-sm); }
 .move-form .muted { font-family: var(--font-mono); font-size: 11px; }
 

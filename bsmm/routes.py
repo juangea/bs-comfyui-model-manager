@@ -27,6 +27,10 @@ from .util import guess_category, is_weight_file, safe_join
 
 log = logging.getLogger("BS_Model_Manager")
 
+# Al terminar una descarga, invalidar la caché de folder_paths para que ComfyUI vea el modelo
+# nuevo (incluido si cae en una subcarpeta) sin reiniciar.
+dl_manager.on_complete = lambda job: models_mod.invalidate_cache()
+
 PREFIX = "/bs_model_manager"
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 WEBAPP_DIR = os.path.join(PROJECT_ROOT, "webapp")
@@ -195,6 +199,9 @@ async def api_download_clear(request):
 @routes.get(PREFIX + "/api/local/list")
 async def api_local_list(request):
     try:
+        # Refrescar = re-escanear: limpiamos la caché de ComfyUI para detectar modelos nuevos
+        # (también los añadidos a mano fuera de la app) antes de listar desde disco.
+        models_mod.invalidate_cache()
         return web.json_response({"models": models_mod.list_local()})
     except Exception as exc:
         log.exception("api/local/list")

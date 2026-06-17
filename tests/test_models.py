@@ -77,6 +77,32 @@ def test_list_local_unified():
         shutil.rmtree(tmp, ignore_errors=True)
 
 
+def test_list_local_finds_subfolder():
+    tmp, models, extra = _install_fake_fp()
+    try:
+        sub = os.path.join(models, "checkpoints", "sdxl")
+        os.makedirs(sub)
+        with open(os.path.join(sub, "c.safetensors"), "w") as fh:
+            fh.write("z")
+        from bsmm import models as M
+        names = {i["name"] for i in M.list_local()}
+        assert "sdxl/c.safetensors" in names  # modelos en subcarpeta sí se listan
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+def test_invalidate_cache_clears():
+    tmp, models, extra = _install_fake_fp()
+    try:
+        fp = sys.modules["folder_paths"]
+        fp.filename_list_cache["checkpoints"] = "stale"
+        from bsmm import models as M
+        M.invalidate_cache()
+        assert fp.filename_list_cache == {}
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
 def test_move_between_categories():
     tmp, models, extra = _install_fake_fp()
     try:

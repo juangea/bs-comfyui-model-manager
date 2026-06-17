@@ -14,6 +14,7 @@ const state = {
   files: [],            // archivos del repo + selección/destino por fila
   providers: [],        // /api/providers
   pollTimer: null,
+  jobStates: {},        // id de descarga -> último estado visto (para auto-refrescar al terminar)
 };
 
 // ---------- i18n (EN por defecto + ES) ----------
@@ -428,6 +429,15 @@ async function startDownload() {
 
 // ---------- descargas (jobs) ----------
 function renderJobs(jobs) {
+  // Detecta descargas recién completadas para refrescar la lista de modelos automáticamente.
+  let justFinished = false;
+  for (const j of jobs) {
+    const prev = state.jobStates[j.id];
+    if (prev && prev !== "done" && j.state === "done") justFinished = true;
+    state.jobStates[j.id] = j.state;
+  }
+  if (justFinished) loadLocal();  // /api/local/list invalida la caché y re-escanea disco
+
   const box = $("#jobs");
   if (!jobs.length) { box.innerHTML = `<div class="muted">${t("jobs_none")}</div>`; return; }
   box.innerHTML = "";
@@ -531,8 +541,17 @@ function localRow(m) {
     el("button", { class: "btn small danger", onclick: () => deleteModel(m) }, t("btn_delete")),
   );
 
+  // Separa subcarpeta y nombre para que se vea claro cuándo un modelo está dentro de un subfolder.
+  const slash = m.name.lastIndexOf("/");
+  const sub = slash >= 0 ? m.name.slice(0, slash) : "";
+  const base = slash >= 0 ? m.name.slice(slash + 1) : m.name;
+  const fileCell = el("td", { class: "c-file" },
+    el("div", { class: "model-name" }, base),
+    sub ? el("div", { class: "model-sub", title: m.abs_path }, "↳ " + sub + "/") : null,
+  );
+
   const tr = el("tr", {},
-    el("td", { class: "c-file" }, m.name),
+    fileCell,
     el("td", {}, locBadge, " ", el("span", { class: "muted", title: m.dir_root }, shortPath(m.dir_root))),
     el("td", { class: "c-size" }, humanSize(m.size)),
     actions,

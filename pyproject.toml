@@ -1,6 +1,6 @@
 [project]
 name = "bs-comfyui-model-manager"
-version = "1.0.2"
+version = "1.0.3"
 description = "Download models from HuggingFace (no API key) and manage your local ComfyUI models (list, move, delete) from a built-in panel."
 authors = [
     { name = "Enob-Studio S.L." },

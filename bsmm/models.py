@@ -175,6 +175,18 @@ def move(category, name, dir_root, target_category, target_dir, subfolder=""):
     return dst
 
 
+def invalidate_cache():
+    """Fuerza a ComfyUI a re-escanear las carpetas de modelos (tras descargar/borrar/mover).
+
+    Limpia las cachés de `folder_paths` para que los modelos nuevos (incluidos los que caen en
+    subcarpetas) aparezcan también en los desplegables de ComfyUI sin reiniciar.
+    """
+    try:
+        _invalidate_cache(_fp())
+    except Exception:
+        pass
+
+
 def _invalidate_cache(fp):
     """Invalida las cachés de listados de ComfyUI tras un cambio en disco."""
     try:
