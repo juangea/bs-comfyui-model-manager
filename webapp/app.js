@@ -47,7 +47,7 @@ const I18N = {
     state_error: "error", state_canceled: "canceled",
     st_loading: "Loading…", sum_models: "{n} models · {size}",
     badge_extra: "extra", badge_main: "main", btn_move: "Move", btn_delete: "Delete",
-    lbl_move_to: "Move to:", opt_extra: " (extra)",
+    lbl_move_to: "Move to:", opt_extra: " (extra)", free_space: "free",
     del_title: "Delete model", del_body: "Are you sure you want to delete <b>{name}</b> ({size})?",
     st_open_from_comfy: "Open this panel from the ComfyUI tab to detect the workflow.",
     st_no_models: "The open workflow declares no models (or no workflow is open).",
@@ -87,7 +87,7 @@ const I18N = {
     state_error: "error", state_canceled: "cancelado",
     st_loading: "Cargando…", sum_models: "{n} modelos · {size}",
     badge_extra: "extra", badge_main: "principal", btn_move: "Mover", btn_delete: "Borrar",
-    lbl_move_to: "Mover a:", opt_extra: " (extra)",
+    lbl_move_to: "Mover a:", opt_extra: " (extra)", free_space: "libres",
     del_title: "Borrar modelo", del_body: "¿Seguro que quieres borrar <b>{name}</b> ({size})?",
     st_open_from_comfy: "Abre esta interfaz desde la pestaña de ComfyUI para detectar el workflow.",
     st_no_models: "El workflow abierto no declara modelos (o no hay workflow).",
@@ -308,11 +308,55 @@ async function loadFolders() {
   const bulk = $("#bulk-category");
   bulk.innerHTML = "";
   for (const name of state.weightCats) bulk.appendChild(el("option", { value: name }, name));
+  renderBulkDirs();
+}
+
+function renderBulkDirs() {
+  const cat = $("#bulk-category").value;
+  const sel = $("#bulk-dir");
+  if (!sel) return;
+  sel.innerHTML = "";
+  for (const o of dirOptions(cat, defaultDirFor(cat))) sel.appendChild(o);
+  sel.style.display = pathsFor(cat).length > 1 ? "" : "none";  // solo estorba si hay una sola ruta
 }
 
 function categoryOptions(selected) {
   return state.weightCats.map((name) =>
     el("option", { value: name, ...(name === selected ? { selected: "selected" } : {}) }, name)
+  );
+}
+
+// ---------- rutas físicas de destino ----------
+// Una categoría puede tener VARIAS carpetas reales (la de ComfyUI + las de extra_model_paths.yaml,
+// a menudo en otro disco). Hay que dejar elegir en cuál se descarga, y recordar la elección.
+function pathsFor(category) {
+  const cat = state.folders && state.folders.categories.find((c) => c.name === category);
+  return cat ? cat.paths : [];
+}
+
+function defaultDirFor(category) {
+  const paths = pathsFor(category);
+  if (!paths.length) return "";
+  const remembered = localStorage.getItem("bsmm_dir_" + category);
+  if (remembered && paths.some((p) => p.path === remembered)) return remembered;  // lo que eligió antes
+  const cat = state.folders && state.folders.categories.find((c) => c.name === category);
+  if (cat && cat.default_path) return cat.default_path;                            // default del backend
+  return paths[0].path;
+}
+
+function rememberDir(category, dir) {
+  try { localStorage.setItem("bsmm_dir_" + category, dir); } catch (e) { /* ignorar */ }
+}
+
+function dirLabel(p) {
+  const free = p.free != null ? ` · ${humanSize(p.free)} ${t("free_space")}` : "";
+  return shortPath(p.path) + (p.is_extra ? t("opt_extra") : "") + free;
+}
+
+function dirOptions(category, selected) {
+  return pathsFor(category).map((p) =>
+    el("option", { value: p.path, title: p.path, ...(p.path === selected ? { selected: "selected" } : {}) },
+      dirLabel(p))
   );
 }
 
@@ -334,6 +378,7 @@ async function analyzeRepo() {
       ...f,
       selected: false,              // nada marcado por defecto
       category: f.guessed_category,
+      target_dir: defaultDirFor(f.guessed_category),
       subfolder: "",
       filename: f.path.split("/").pop(),
     }));
@@ -365,10 +410,28 @@ function renderFiles() {
     check.addEventListener("change", () => { f.selected = check.checked; updateSummary(); });
 
     const dest = el("select", {}, ...categoryOptions(f.category));
-    dest.addEventListener("change", () => { f.category = dest.value; });
+    dest.addEventListener("change", () => {
+      f.category = dest.value;
+      f.target_dir = defaultDirFor(f.category);   // la categoría nueva tiene otras rutas físicas
+      renderFiles();
+    });
+
+    // Selector de carpeta real: imprescindible cuando la categoría tiene rutas extra (otro disco).
+    const paths = pathsFor(f.category);
+    let dirNode = null;
+    if (paths.length > 1) {
+      dirNode = el("select", { class: "dir-select" }, ...dirOptions(f.category, f.target_dir));
+      dirNode.addEventListener("change", () => {
+        f.target_dir = dirNode.value;
+        rememberDir(f.category, f.target_dir);
+      });
+    } else if (paths.length === 1) {
+      dirNode = el("div", { class: "dir-hint", title: paths[0].path }, dirLabel(paths[0]));
+    }
+
     const sub = el("input", { type: "text", value: f.subfolder || "", placeholder: t("ph_subfolder") });
     sub.addEventListener("change", () => { f.subfolder = sub.value.trim(); });
-    const destCell = el("td", { class: "c-dest" }, el("div", { class: "dest-cell" }, dest, sub));
+    const destCell = el("td", { class: "c-dest" }, el("div", { class: "dest-cell" }, dest, dirNode, sub));
 
     const nameInput = el("input", { type: "text", value: f.filename });
     nameInput.addEventListener("change", () => { f.filename = nameInput.value.trim(); });
@@ -411,7 +474,9 @@ async function startDownload() {
   const sel = state.files.filter((f) => f.selected);
   if (!sel.length) return;
   const items = sel.map((f) => ({
-    path: f.path, category: f.category, subfolder: f.subfolder || "",
+    path: f.path, category: f.category,
+    target_dir: f.target_dir || defaultDirFor(f.category),   // carpeta real elegida (puede ser extra)
+    subfolder: f.subfolder || "",
     filename: f.filename, size: f.size,
   }));
   try {
@@ -705,6 +770,7 @@ async function selectMissing(ref) {
   }
   f.selected = true;
   if (state.weightCats.includes(ref.directory)) f.category = ref.directory;
+  f.target_dir = defaultDirFor(f.category);   // respeta la ruta recordada (p. ej. otro disco)
   switchView("download");
   renderFiles();
   setStatus($("#repo-status"), t("st_marked", { path: f.path, cat: f.category }), "ok");
@@ -729,10 +795,15 @@ function wireEvents() {
   $("#sel-all").addEventListener("click", () => setSelection(() => true));
   $("#sel-none").addEventListener("click", () => setSelection(() => false));
   $("#check-head").addEventListener("change", (e) => setSelection(() => e.target.checked));
+  $("#bulk-category").addEventListener("change", renderBulkDirs);
   $("#bulk-apply").addEventListener("click", () => {
     const cat = $("#bulk-category").value;
+    const dir = $("#bulk-dir").value || defaultDirFor(cat);
     const sub = $("#bulk-subfolder").value.trim();
-    state.files.forEach((f) => { if (f.selected) { f.category = cat; f.subfolder = sub; } });
+    if (dir) rememberDir(cat, dir);
+    state.files.forEach((f) => {
+      if (f.selected) { f.category = cat; f.target_dir = dir; f.subfolder = sub; }
+    });
     renderFiles();
   });
   $("#download-btn").addEventListener("click", startDownload);

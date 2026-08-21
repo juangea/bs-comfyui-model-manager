@@ -77,6 +77,41 @@ def test_list_local_unified():
         shutil.rmtree(tmp, ignore_errors=True)
 
 
+def test_default_target_dir_skips_legacy_unet():
+    """Regresión: `diffusion_models` = [models/unet, models/diffusion_models, <extra>].
+
+    Coger "la primera" mandaba las descargas a models/unet (disco por defecto) en vez de a la
+    carpeta correcta, aunque el usuario usara extra_model_paths.yaml para otro disco.
+    """
+    tmp, models, extra = _install_fake_fp()
+    try:
+        fp = sys.modules["folder_paths"]
+        unet = os.path.join(models, "unet")
+        os.makedirs(unet)
+        fp.folder_names_and_paths["diffusion_models"] = (
+            [unet, os.path.join(models, "diffusion_models"), extra], {".safetensors"}
+        )
+        from bsmm import models as M
+        assert M.default_target_dir("diffusion_models") == os.path.join(models, "diffusion_models")
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+def test_list_folders_exposes_paths_and_free_space():
+    """La UI necesita todas las rutas (incl. extra) + espacio libre para poder elegir destino."""
+    tmp, models, extra = _install_fake_fp()
+    try:
+        from bsmm import models as M
+        cats = {c["name"]: c for c in M.list_folders()["categories"]}
+        dm = cats["diffusion_models"]
+        assert len(dm["paths"]) == 2                      # la principal y la extra
+        assert any(p["is_extra"] for p in dm["paths"])
+        assert all(p["free"] is None or p["free"] >= 0 for p in dm["paths"])
+        assert dm["default_path"] in [p["path"] for p in dm["paths"]]
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
 def test_list_local_finds_subfolder():
     tmp, models, extra = _install_fake_fp()
     try:

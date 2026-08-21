@@ -23,7 +23,7 @@ mimetypes.add_type("font/woff2", ".woff2")
 from . import models as models_mod
 from .downloads import manager as dl_manager
 from .providers import get_provider, list_providers, ProviderError
-from .util import guess_category, is_weight_file, safe_join
+from .util import guess_category, human_size, is_weight_file, safe_join
 
 log = logging.getLogger("BS_Model_Manager")
 
@@ -56,15 +56,8 @@ def _weight_categories():
 
 
 def _default_target_dir(category):
-    """Primera ruta existente y escribible de la categoría (o la primera a secas)."""
-    paths = folder_paths.get_folder_paths(category)
-    for p in paths:
-        if os.path.isdir(p) and models_mod._is_writable(p):
-            return p
-    for p in paths:
-        if models_mod._is_writable(p):
-            return p
-    return paths[0] if paths else None
+    """Ruta destino por defecto (ver `models.default_target_dir`: evita la legacy 'unet')."""
+    return models_mod.default_target_dir(category)
 
 
 # ----------------------------- API: meta -----------------------------
@@ -136,7 +129,8 @@ async def api_download(request):
     if not items:
         return _err("No se ha seleccionado ningún archivo.", 400)
 
-    jobs = []
+    # Primera pasada: resolver y validar TODOS los destinos (no encolamos nada si algo falla).
+    resolved = []
     for it in items:
         path = it.get("path")
         category = it.get("category")
@@ -165,12 +159,36 @@ async def api_download(request):
         except ValueError as exc:
             return _err(exc, 400)
 
-        url, headers = provider.resolve_url(repo_id, revision, path)
+        resolved.append({
+            "path": path, "category": category, "target_dir": target_dir,
+            "dest": dest, "filename": filename, "size": int(it.get("size") or 0),
+        })
+
+    # Comprobación de espacio: suma lo pendiente por volumen y avisa ANTES de empezar, para no
+    # llenar un disco a medias (típico al mezclar la carpeta por defecto con extra_model_paths).
+    needed = {}
+    for r in resolved:
+        if r["size"] <= 0 or os.path.exists(r["dest"]):
+            continue
+        key = os.path.normcase(os.path.splitdrive(os.path.abspath(r["dest"]))[0] or r["target_dir"])
+        slot = needed.setdefault(key, {"bytes": 0, "dir": r["target_dir"]})
+        slot["bytes"] += r["size"]
+    for slot in needed.values():
+        free = models_mod.free_space(slot["dir"])
+        if free is not None and slot["bytes"] > free:
+            return _err(
+                f"No hay espacio suficiente en {slot['dir']}: "
+                f"necesitas {human_size(slot['bytes'])} y quedan {human_size(free)}.",
+                400,
+            )
+
+    jobs = []
+    for r in resolved:
+        url, headers = provider.resolve_url(repo_id, revision, r["path"])
         jid = dl_manager.enqueue(
-            url=url, headers=headers, dest=dest,
-            total=int(it.get("size") or 0),
+            url=url, headers=headers, dest=r["dest"], total=r["size"],
             provider=provider_id, repo=repo_id, revision=revision,
-            path=path, category=category, filename=filename,
+            path=r["path"], category=r["category"], filename=r["filename"],
         )
         jobs.append(jid)
 

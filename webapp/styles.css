@@ -304,6 +304,8 @@ tbody tr:hover { background: rgba(250, 240, 220, 0.035); }
 .c-name { width: 220px; }
 .c-file { word-break: break-all; font-family: var(--font-mono); font-size: 11.5px; }
 .dest-cell { display: flex; flex-direction: column; gap: 4px; }
+.dir-select { font-family: var(--font-mono); font-size: 11px; }
+.dir-hint { color: var(--text-faint); font-family: var(--font-mono); font-size: 10.5px; padding-left: 2px; word-break: break-all; }
 td select, td input { width: 100%; padding: 5px 7px; }
 
 input[type="checkbox"] { accent-color: var(--red-500); width: 15px; height: 15px; cursor: pointer; }

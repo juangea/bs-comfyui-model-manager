@@ -67,9 +67,65 @@ def list_folders(weights_only=False):
                 "exists": exists,
                 "writable": _is_writable(p),
                 "is_extra": bool(models_dir) and not is_within(models_dir, p),
+                "free": free_space(p),
             })
-        categories.append({"name": name, "accepts_weights": accepts, "paths": paths})
+        categories.append({
+            "name": name,
+            "accepts_weights": accepts,
+            "paths": paths,
+            "default_path": default_target_dir(name),
+        })
     return {"models_dir": models_dir, "categories": categories}
+
+
+def free_space(path):
+    """Espacio libre (bytes) del volumen donde vive `path`, o None si no se puede saber.
+
+    Se sube al primer ancestro existente porque la carpeta destino puede no existir aún.
+    """
+    probe = path
+    while probe and not os.path.exists(probe):
+        parent = os.path.dirname(probe)
+        if parent == probe:
+            break
+        probe = parent
+    try:
+        return shutil.disk_usage(probe).free
+    except OSError:
+        return None
+
+
+def default_target_dir(category):
+    """Ruta destino por defecto de una categoría, cuando el usuario no elige una.
+
+    IMPORTANTE: no vale con coger la primera ruta. ComfyUI registra
+    `diffusion_models = [models/unet, models/diffusion_models]` (la legacy `unet` va primera) y las
+    rutas de `extra_model_paths.yaml` se añaden AL FINAL, así que "la primera" acababa descargando en
+    `models/unet` del disco por defecto. Preferimos la carpeta cuyo nombre coincide con la categoría.
+    """
+    fp = _fp()
+    if category not in fp.folder_names_and_paths:
+        return None
+    paths = fp.get_folder_paths(category)
+    if not paths:
+        return None
+
+    def usable(p):
+        return os.path.isdir(p) and _is_writable(p)
+
+    # 1) carpeta existente y escribible cuyo basename == categoría (evita la legacy 'unet').
+    for p in paths:
+        if os.path.basename(os.path.normpath(p)).lower() == category.lower() and usable(p):
+            return p
+    # 2) primera existente y escribible.
+    for p in paths:
+        if usable(p):
+            return p
+    # 3) primera escribible aunque no exista todavía (se creará al descargar).
+    for p in paths:
+        if _is_writable(p):
+            return p
+    return paths[0]
 
 
 def _is_writable(path):
