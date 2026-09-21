@@ -8,6 +8,9 @@
 import { app } from "../../scripts/app.js";
 
 const APP_URL = "/bs_model_manager/";
+// URL única en cada apertura: impide que el navegador reutilice un index.html viejo de su caché
+// (p. ej. de una versión anterior del nodo) junto a un app.js nuevo.
+const appUrl = () => APP_URL + "?t=" + Date.now();
 
 // Puente hacia el grafo de ComfyUI: recoge los modelos declarados por el workflow
 // (`node.properties.models` = [{name, url, directory}], incl. subgrafos). La app del iframe
@@ -63,7 +66,7 @@ function buildIframe(el) {
   el.style.height = "100%";
   el.innerHTML = "";
   const iframe = document.createElement("iframe");
-  iframe.src = APP_URL;
+  iframe.src = appUrl();
   iframe.title = "BS Model Manager";
   iframe.style.cssText =
     "position:absolute;inset:0;width:100%;height:100%;border:none;display:block;background:#1A1819;";
@@ -80,7 +83,7 @@ function addFloatingButton() {
   btn.style.cssText =
     "position:fixed;right:16px;bottom:16px;z-index:9999;padding:8px 12px;border-radius:8px;" +
     "border:1px solid #555;background:#222;color:#eee;cursor:pointer;font:13px sans-serif;";
-  btn.onclick = () => window.open(APP_URL, "_blank");
+  btn.onclick = () => window.open(appUrl(), "_blank");
   document.body.appendChild(btn);
 }
 

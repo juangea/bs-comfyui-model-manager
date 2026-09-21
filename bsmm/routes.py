@@ -25,7 +25,7 @@ from . import models as models_mod
 from . import settings as settings_mod
 from .downloads import manager as dl_manager
 from .providers import get_provider, list_providers, ProviderError
-from .util import guess_category, human_size, is_weight_file, safe_join
+from .util import guess_category, human_size, is_weight_file, safe_join, static_cache_control
 
 log = logging.getLogger("BS_Model_Manager")
 
@@ -91,7 +91,7 @@ async def api_folders(request):
 @routes.post(PREFIX + "/api/repo/list")
 async def api_repo_list(request):
     data = await _body(request)
-    provider_id = data.get("provider", "huggingface")
+    provider_id = data.get("provider") or "huggingface"  # vacío (UI a medio cargar) -> HF
     slug = data.get("slug", "")
     revision = data.get("revision") or None
     try:
@@ -127,7 +127,7 @@ async def api_repo_list(request):
 @routes.post(PREFIX + "/api/download")
 async def api_download(request):
     data = await _body(request)
-    provider_id = data.get("provider", "huggingface")
+    provider_id = data.get("provider") or "huggingface"  # vacío (UI a medio cargar) -> HF
     revision = data.get("revision") or "main"
     items = data.get("items") or []
     try:
@@ -392,7 +392,8 @@ def _serve_static(tail):
         return web.Response(status=403, text="forbidden")
     if not os.path.isfile(full):
         return web.Response(status=404, text="not found")
-    return web.FileResponse(full)
+    cache = static_cache_control(os.path.basename(full))
+    return web.FileResponse(full, headers={"Cache-Control": cache} if cache else None)
 
 
 @routes.get(PREFIX)

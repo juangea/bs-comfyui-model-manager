@@ -74,6 +74,20 @@ def is_within(root, candidate):
         return False
 
 
+def static_cache_control(filename):
+    """Cabecera Cache-Control para los archivos de la mini-app, o None.
+
+    ComfyUI ya marca `.js`/`.css` como no-store, pero NO el HTML: tras actualizar el nodo, el navegador
+    podía reutilizar un `index.html` viejo de su caché junto al `app.js` nuevo y el panel quedaba roto
+    (sin ⚙ y con "Proveedor desconocido"). HTML/JS/CSS se revalidan siempre (un 304 barato si no han
+    cambiado); las fuentes sí pueden cachearse.
+    """
+    ext = os.path.splitext(filename or "")[1].lower()
+    if ext in ("", ".html", ".htm", ".js", ".css"):
+        return "no-cache"
+    return None
+
+
 # Reglas de heurística (subcadena -> categoría). El orden importa: las más específicas
 # van primero (clip_vision antes que clip, vae_approx antes que vae).
 _CATEGORY_RULES = [

@@ -512,7 +512,7 @@ async function analyzeRepo() {
   $("#analyze").disabled = true;
   try {
     const data = await postJSON(`${API}/repo/list`, {
-      provider: $("#provider").value,
+      provider: $("#provider").value || "huggingface",
       slug,
       revision: $("#revision").value.trim() || null,
     });
@@ -929,19 +929,27 @@ function switchView(view) {
   if (view === "workflow") loadMissing();
 }
 
+// Engancha un evento si el elemento existe. Si falta (p. ej. un index.html de otra versión en caché)
+// solo avisa en consola: antes, un único botón ausente abortaba toda la inicialización.
+function on(sel, evt, fn) {
+  const node = $(sel);
+  if (node) node.addEventListener(evt, fn);
+  else console.warn("[BS Model Manager] falta el elemento " + sel + " (¿HTML de otra versión en caché?)");
+}
+
 function wireEvents() {
   $$(".tab").forEach((t) => t.addEventListener("click", () => switchView(t.dataset.view)));
-  $("#analyze").addEventListener("click", analyzeRepo);
-  $("#slug").addEventListener("keydown", (e) => { if (e.key === "Enter") analyzeRepo(); });
-  $("#files-filter").addEventListener("input", renderFiles);
-  $("#sel-weights").addEventListener("click", () => setSelection((f) => f.is_weight));
-  $("#sel-all").addEventListener("click", () => setSelection(() => true));
-  $("#sel-none").addEventListener("click", () => setSelection(() => false));
-  $("#check-head").addEventListener("change", (e) => setSelection(() => e.target.checked));
-  $("#bulk-category").addEventListener("change", renderBulkDirs);
-  $("#bulk-apply").addEventListener("click", () => {
+  on("#analyze", "click", analyzeRepo);
+  on("#slug", "keydown", (e) => { if (e.key === "Enter") analyzeRepo(); });
+  on("#files-filter", "input", renderFiles);
+  on("#sel-weights", "click", () => setSelection((f) => f.is_weight));
+  on("#sel-all", "click", () => setSelection(() => true));
+  on("#sel-none", "click", () => setSelection(() => false));
+  on("#check-head", "change", (e) => setSelection(() => e.target.checked));
+  on("#bulk-category", "change", renderBulkDirs);
+  on("#bulk-apply", "click", () => {
     const cat = $("#bulk-category").value;
-    const dir = $("#bulk-dir").value || defaultDirFor(cat);
+    const dir = ($("#bulk-dir") || {}).value || defaultDirFor(cat);
     const sub = $("#bulk-subfolder").value.trim();
     if (dir) rememberDir(cat, dir);
     state.files.forEach((f) => {
@@ -949,22 +957,22 @@ function wireEvents() {
     });
     renderFiles();
   });
-  $("#download-btn").addEventListener("click", startDownload);
-  $("#clear-finished").addEventListener("click", async () => { await postJSON(`${API}/download/clear`, {}); pollOnce(); });
-  $("#refresh-local").addEventListener("click", loadLocal);
-  $("#local-filter").addEventListener("input", () => loadLocal());
-  $("#scan-workflow").addEventListener("click", loadMissing);
+  on("#download-btn", "click", startDownload);
+  on("#clear-finished", "click", async () => { await postJSON(`${API}/download/clear`, {}); pollOnce(); });
+  on("#refresh-local", "click", loadLocal);
+  on("#local-filter", "input", () => loadLocal());
+  on("#scan-workflow", "click", loadMissing);
   $$(".lang-btn").forEach((b) => b.addEventListener("click", () => setLang(b.dataset.lang)));
-  $("#help-btn").addEventListener("click", openHelp);
-  $("#help-close").addEventListener("click", closeHelp);
-  $("#help-modal").addEventListener("click", (e) => { if (e.target.id === "help-modal") closeHelp(); });
-  $("#settings-btn").addEventListener("click", openSettings);
-  $("#settings-close").addEventListener("click", closeSettings);
-  $("#settings-modal").addEventListener("click", (e) => { if (e.target.id === "settings-modal") closeSettings(); });
-  $("#hf-token-save").addEventListener("click", saveHfToken);
-  $("#hf-token-test").addEventListener("click", testHfToken);
-  $("#hf-token-remove").addEventListener("click", removeHfToken);
-  $("#hf-token-input").addEventListener("keydown", (e) => { if (e.key === "Enter") saveHfToken(); });
+  on("#help-btn", "click", openHelp);
+  on("#help-close", "click", closeHelp);
+  on("#help-modal", "click", (e) => { if (e.target.id === "help-modal") closeHelp(); });
+  on("#settings-btn", "click", openSettings);
+  on("#settings-close", "click", closeSettings);
+  on("#settings-modal", "click", (e) => { if (e.target.id === "settings-modal") closeSettings(); });
+  on("#hf-token-save", "click", saveHfToken);
+  on("#hf-token-test", "click", testHfToken);
+  on("#hf-token-remove", "click", removeHfToken);
+  on("#hf-token-input", "keydown", (e) => { if (e.key === "Enter") saveHfToken(); });
 }
 
 async function init() {

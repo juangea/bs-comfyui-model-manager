@@ -19,7 +19,7 @@ from ..settings import get_token
 from .base import Provider, FileEntry, ProviderError
 
 HF_HOST = "https://huggingface.co"
-USER_AGENT = "BS-ComfyUI-Model-Manager/1.0.5 (+stdlib)"
+USER_AGENT = "BS-ComfyUI-Model-Manager/1.0.6 (+stdlib)"
 
 
 def _parse_next_link(link_header):

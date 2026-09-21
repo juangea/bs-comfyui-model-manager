@@ -3,7 +3,7 @@
 """Tests de bsmm.util (offline, sin ComfyUI)."""
 import os
 
-from bsmm.util import safe_join, guess_category, human_size, is_weight_file
+from bsmm.util import safe_join, guess_category, human_size, is_weight_file, static_cache_control
 
 CATS = ["checkpoints", "vae", "diffusion_models", "loras",
         "text_encoders", "clip_vision", "controlnet", "upscale_models"]
@@ -61,3 +61,10 @@ def test_safe_join_blocks_absolute():
         raise AssertionError("no bloqueó ruta absoluta")
     except ValueError:
         pass
+
+
+def test_static_cache_control_never_caches_html():
+    """Regresión v1.0.5: un index.html viejo en caché + app.js nuevo dejaba el panel roto."""
+    for name in ("index.html", "", "app.js", "styles.css", "fonts.css"):
+        assert static_cache_control(name) == "no-cache", name
+    assert static_cache_control("jost-latin.woff2") is None   # las fuentes sí pueden cachearse
