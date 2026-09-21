@@ -13,13 +13,15 @@ import urllib.error
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 
+from .net import http_error_code, urlopen as net_urlopen
+
 CHUNK = 1 << 20  # 1 MiB
 
 
 class _Job:
     __slots__ = ("id", "url", "headers", "dest", "part", "category", "filename",
                  "provider", "repo", "revision", "path",
-                 "total", "downloaded", "speed", "state", "error",
+                 "total", "downloaded", "speed", "state", "error", "error_code",
                  "cancel", "created", "_last_t", "_last_b")
 
     def __init__(self, jid, **kw):
@@ -39,6 +41,7 @@ class _Job:
         self.speed = 0.0
         self.state = "queued"  # queued | downloading | done | error | canceled
         self.error = ""
+        self.error_code = ""  # código estable (auth_required, rate_limited…) que la UI traduce
         self.cancel = False
         self.created = time.time()
         self._last_t = 0.0
@@ -58,6 +61,7 @@ class _Job:
             "speed": round(self.speed, 1),
             "state": self.state,
             "error": self.error,
+            "error_code": self.error_code,
             "created": self.created,
         }
 
@@ -140,7 +144,8 @@ class DownloadManager:
         req = urllib.request.Request(job.url, headers=headers)
         job.state = "downloading"
         try:
-            resp = urllib.request.urlopen(req, timeout=60)
+            # net_urlopen: no reenvía el token a la CDN en la redirección de HuggingFace.
+            resp = net_urlopen(req, timeout=60)
         except urllib.error.HTTPError as exc:
             if exc.code == 416 and existing > 0:
                 # Rango no satisfactible: el .part probablemente ya está completo.
@@ -150,8 +155,11 @@ class DownloadManager:
                 job.state = "done"
                 self._fire_complete(job)
                 return
+            # Código estable para que la UI explique el error (token, licencia, límite…).
+            job.error_code = http_error_code(exc.code, "Authorization" in job.headers) or ""
             raise RuntimeError(f"HTTP {exc.code} al descargar {job.path}")
         except urllib.error.URLError as exc:
+            job.error_code = "network"
             raise RuntimeError(f"Error de red: {exc.reason}")
 
         with resp:

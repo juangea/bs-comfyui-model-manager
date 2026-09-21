@@ -20,7 +20,15 @@ El resto del sistema (cola de descargas, UI, gestor local) es agnóstico al prov
 
 
 class ProviderError(Exception):
-    """Error legible para el usuario al hablar con un proveedor (404, privado, red...)."""
+    """Error legible para el usuario al hablar con un proveedor (404, privado, red...).
+
+    `code` (opcional) es un identificador estable que la UI traduce a EN/ES:
+    auth_required, token_rejected, forbidden, not_found, rate_limited, network.
+    """
+
+    def __init__(self, message, code=None):
+        super().__init__(message)
+        self.code = code
 
 
 class FileEntry:

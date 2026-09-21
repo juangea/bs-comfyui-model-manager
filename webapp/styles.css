@@ -179,6 +179,9 @@ h1, h2, h3, h4 { font-family: var(--font-display); color: var(--text-strong); fo
   transition: color .12s var(--ease-standard), border-color .12s var(--ease-standard);
 }
 .help-btn:hover { color: var(--text-strong); border-color: var(--text-accent); }
+.help-btn svg { width: 14px; height: 14px; display: block; }
+/* Indicador discreto: hay un token de HuggingFace guardado. */
+.help-btn.has-token { color: var(--green-400); border-color: rgba(111, 181, 140, 0.55); }
 
 .lang-toggle {
   display: inline-flex;
@@ -362,3 +365,7 @@ input[type="checkbox"] { accent-color: var(--red-500); width: 15px; height: 15px
 .help-body code { font-family: var(--font-mono); font-size: 11.5px; background: rgba(250, 240, 220, 0.08); padding: 1px 5px; border-radius: 4px; }
 .help-body a { color: var(--red-300); }
 .help-body .badge { vertical-align: middle; }
+
+/* ---------- Ajustes ---------- */
+.token-row { margin: 6px 0 4px; }
+.token-row .grow-input { flex: 1; min-width: 200px; font-family: var(--font-mono); font-size: 12px; }

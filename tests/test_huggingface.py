@@ -111,3 +111,17 @@ def test_pagination_follows_link():
     hf._get_json = fake_get_json
     files = hf.list_files("x/y", "main")
     assert {f.path for f in files} == {"a.safetensors", "b.safetensors"}
+
+
+def test_token_header_only_when_saved():
+    import bsmm.providers.huggingface as hfmod
+    original = hfmod.get_token
+    try:
+        hfmod.get_token = lambda provider: None
+        _url, headers = HuggingFaceProvider().resolve_url("a/b", "main", "f.safetensors")
+        assert "Authorization" not in headers          # sin token: descargas anónimas, como siempre
+        hfmod.get_token = lambda provider: "hf_TESTTOKEN123456"
+        _url, headers = HuggingFaceProvider().resolve_url("a/b", "main", "f.safetensors")
+        assert headers["Authorization"] == "Bearer hf_TESTTOKEN123456"
+    finally:
+        hfmod.get_token = original

@@ -15,6 +15,7 @@ const state = {
   providers: [],        // /api/providers
   pollTimer: null,
   jobStates: {},        // id de descarga -> último estado visto (para auto-refrescar al terminar)
+  hfTokenMasked: "",    // máscara del token de HuggingFace guardado ('' = ninguno). Nunca el token.
 };
 
 // ---------- i18n (EN por defecto + ES) ----------
@@ -58,6 +59,25 @@ const I18N = {
     st_not_found: "Couldn't find '{path}' in {repo}.",
     st_marked: "Marked «{path}» → {cat}. Review and click «Download selected».",
     st_folders_err: "Couldn't load folders: {e}",
+    settings_title: "Settings", settings_tooltip: "Settings",
+    hf_token_title: "HuggingFace token (optional)",
+    hf_token_desc: "Only needed for gated or private models (e.g. FLUX.1-dev) and to get higher download limits. Everything works without it.",
+    hf_token_how: 'Create a <b>Read</b> token at <a href="https://huggingface.co/settings/tokens" target="_blank" rel="noopener noreferrer">huggingface.co/settings/tokens</a>. For gated models you must also accept the licence on the model page, logged in with the same account.',
+    hf_token_privacy: "The token is stored on the ComfyUI server (not in this node's folder), is never shown again in full and is only sent to huggingface.co. Anyone who can open this ComfyUI can download with it, but not read it.",
+    hf_token_ph: "hf_…", btn_save: "Save", btn_test: "Test", btn_remove: "Remove",
+    hf_state_none: "No token saved — downloads are anonymous.",
+    hf_state_set: "Token saved: {mask}",
+    hf_saved: "Token saved.", hf_removed: "Token removed.", hf_testing: "Checking with HuggingFace…",
+    hf_test_ok: "Valid token · user {user} · permission: {role}",
+    hf_test_write_warn: "This token can also write to your account; a read-only token is recommended.",
+    err_auth_required: "This repository needs authentication (gated or private). Add a {provider} token in Settings (⚙) and accept the model licence on its page.",
+    err_token_rejected: "{provider} rejected your token (401). Check it in Settings (⚙).",
+    err_forbidden: "Your {provider} account has no access to this repository (403). Accept its licence on the model page while logged in.",
+    err_not_found: "Repository or file not found (404).",
+    err_rate_limited: "{provider} is rate-limiting you (429). Wait a few minutes, or add a token in Settings (⚙) for higher limits.",
+    err_network: "Network error while contacting {provider}.",
+    err_token_format: "That doesn't look like a HuggingFace token (they start with hf_).",
+    err_no_token: "There is no token to test.",
   },
   es: {
     brand_link_title: "Ir a bone-studio.com",
@@ -98,6 +118,25 @@ const I18N = {
     st_not_found: "No encontré '{path}' en {repo}.",
     st_marked: "Marcado «{path}» → {cat}. Revisa y pulsa «Descargar seleccionados».",
     st_folders_err: "No se pudieron cargar las carpetas: {e}",
+    settings_title: "Ajustes", settings_tooltip: "Ajustes",
+    hf_token_title: "Token de HuggingFace (opcional)",
+    hf_token_desc: "Solo hace falta para modelos gated o privados (p. ej. FLUX.1-dev) y para tener más límite de descargas. Todo funciona sin él.",
+    hf_token_how: 'Crea un token de tipo <b>Read</b> en <a href="https://huggingface.co/settings/tokens" target="_blank" rel="noopener noreferrer">huggingface.co/settings/tokens</a>. En los modelos gated además tienes que aceptar la licencia en la página del modelo, con la misma cuenta.',
+    hf_token_privacy: "El token se guarda en el servidor de ComfyUI (no en la carpeta de este nodo), no se vuelve a mostrar completo y solo se envía a huggingface.co. Quien pueda abrir este ComfyUI podrá descargar con él, pero no leerlo.",
+    hf_token_ph: "hf_…", btn_save: "Guardar", btn_test: "Probar", btn_remove: "Quitar",
+    hf_state_none: "No hay token guardado: las descargas son anónimas.",
+    hf_state_set: "Token guardado: {mask}",
+    hf_saved: "Token guardado.", hf_removed: "Token eliminado.", hf_testing: "Comprobando con HuggingFace…",
+    hf_test_ok: "Token válido · usuario {user} · permiso: {role}",
+    hf_test_write_warn: "Este token también puede escribir en tu cuenta; se recomienda uno de solo lectura.",
+    err_auth_required: "Este repositorio requiere autenticación (gated o privado). Añade un token de {provider} en Ajustes (⚙) y acepta la licencia en la página del modelo.",
+    err_token_rejected: "{provider} ha rechazado tu token (401). Revísalo en Ajustes (⚙).",
+    err_forbidden: "Tu cuenta de {provider} no tiene acceso a este repositorio (403). Acepta su licencia en la página del modelo con la sesión iniciada.",
+    err_not_found: "Repositorio o archivo no encontrado (404).",
+    err_rate_limited: "{provider} está limitando tus peticiones (429). Espera unos minutos o añade un token en Ajustes (⚙) para tener más límite.",
+    err_network: "Error de red al conectar con {provider}.",
+    err_token_format: "Eso no parece un token de HuggingFace (empiezan por hf_).",
+    err_no_token: "No hay ningún token que probar.",
   },
 };
 
@@ -120,6 +159,11 @@ const HELP = {
     <p>A unified list of every local model, grouped by folder — including paths added via
     <code>extra_model_paths.yaml</code> (tagged <span class="badge extra">extra</span>). <b>Move</b> a model
     to another folder (with an optional subfolder) or <b>Delete</b> it. Search with multiple terms.</p>
+    <h4>Settings (⚙)</h4>
+    <p>Optionally save a HuggingFace <b>Read</b> token. It's only needed for gated or private models
+    (e.g. FLUX.1-dev) and gives you higher download limits. For gated models, also accept the licence on
+    the model page. If a download fails, the message tells you whether it's a token, licence or
+    rate-limit problem.</p>
     <p class="muted">Switch language with EN/ES (top right). A Bone-Studio tool —
     <a href="https://bone-studio.com" target="_blank" rel="noopener noreferrer">bone-studio.com</a>.</p>
   `,
@@ -141,6 +185,11 @@ const HELP = {
     añadidas con <code>extra_model_paths.yaml</code> (marcadas como <span class="badge extra">extra</span>).
     <b>Mueve</b> un modelo a otra carpeta (con subcarpeta opcional) o <b>bórralo</b>. Busca con varios
     términos.</p>
+    <h4>Ajustes (⚙)</h4>
+    <p>Opcionalmente puedes guardar un token de HuggingFace de tipo <b>Read</b>. Solo hace falta para
+    modelos gated o privados (p. ej. FLUX.1-dev) y te da más límite de descargas. En los gated, acepta
+    además la licencia en la página del modelo. Si una descarga falla, el mensaje te dice si es cosa del
+    token, de la licencia o de un límite de peticiones.</p>
     <p class="muted">Cambia el idioma con EN/ES (arriba a la derecha). Una herramienta de Bone-Studio —
     <a href="https://bone-studio.com" target="_blank" rel="noopener noreferrer">bone-studio.com</a>.</p>
   `,
@@ -160,6 +209,7 @@ function applyI18n() {
   $$("[data-i18n]").forEach((n) => { n.textContent = t(n.getAttribute("data-i18n")); });
   $$("[data-i18n-ph]").forEach((n) => { n.setAttribute("placeholder", t(n.getAttribute("data-i18n-ph"))); });
   $$("[data-i18n-title]").forEach((n) => { n.setAttribute("title", t(n.getAttribute("data-i18n-title"))); });
+  $$("[data-i18n-html]").forEach((n) => { n.innerHTML = t(n.getAttribute("data-i18n-html")); });
 }
 
 function setLang(lang) {
@@ -174,6 +224,7 @@ function setLang(lang) {
 // Re-renderiza el contenido dinámico al cambiar de idioma.
 function refreshDynamic() {
   renderProviders();
+  renderSettingsState();
   if (!$("#help-modal").classList.contains("hidden")) openHelp();  // reescribe la ayuda en el nuevo idioma
   if (state.files.length) renderFiles(); else updateSummary();
   pollOnce();
@@ -218,10 +269,15 @@ function matchTerms(haystack, query) {
   return terms.some((t) => h.includes(t));
 }
 
+function apiError(data, status) {
+  const e = new Error(data.error || `HTTP ${status}`);
+  e.code = data.code || null;  // código estable del backend (auth_required, rate_limited…)
+  return e;
+}
 async function getJSON(url) {
   const r = await fetch(url);
   const data = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(data.error || `HTTP ${r.status}`);
+  if (!r.ok) throw apiError(data, r.status);
   return data;
 }
 async function postJSON(url, body) {
@@ -231,8 +287,19 @@ async function postJSON(url, body) {
     body: JSON.stringify(body || {}),
   });
   const data = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(data.error || `HTTP ${r.status}`);
+  if (!r.ok) throw apiError(data, r.status);
   return data;
+}
+
+function providerName(id) {
+  const p = (state.providers || []).find((x) => x.id === id);
+  return p ? p.name : (id || "HuggingFace");
+}
+
+// Texto de error en el idioma activo si el backend manda un código conocido; si no, su mensaje.
+function errText(code, fallback, providerId) {
+  if (code && I18N.en["err_" + code]) return t("err_" + code, { provider: providerName(providerId) });
+  return fallback;
 }
 
 function setStatus(node, msg, kind = "") {
@@ -273,6 +340,82 @@ function openHelp() {
 }
 function closeHelp() {
   $("#help-modal").classList.add("hidden");
+}
+
+// ---------- ajustes: token OPCIONAL de HuggingFace ----------
+// El backend nunca devuelve el token: solo si hay uno guardado y su máscara (hf_••••abcd).
+async function loadSettings() {
+  try {
+    const s = await getJSON(`${API}/settings`);
+    state.hfTokenMasked = s.hf_token_set ? s.hf_token_masked : "";
+  } catch (e) {
+    state.hfTokenMasked = "";
+  }
+  renderSettingsState();
+}
+
+function renderSettingsState() {
+  const box = $("#hf-token-state");
+  if (box) {
+    setStatus(box, state.hfTokenMasked ? t("hf_state_set", { mask: state.hfTokenMasked }) : t("hf_state_none"),
+      state.hfTokenMasked ? "ok" : "");
+  }
+  const btn = $("#settings-btn");
+  if (btn) btn.classList.toggle("has-token", !!state.hfTokenMasked);
+}
+
+function openSettings() {
+  setStatus($("#hf-token-msg"), "");
+  $("#settings-modal").classList.remove("hidden");
+  loadSettings();
+  $("#hf-token-input").focus();
+}
+
+function closeSettings() {
+  $("#settings-modal").classList.add("hidden");
+  $("#hf-token-input").value = "";  // no dejar el token escrito en el DOM
+}
+
+async function saveHfToken() {
+  const input = $("#hf-token-input");
+  const token = input.value.trim();
+  if (!token) return;
+  try {
+    const r = await postJSON(`${API}/settings/hf_token`, { token });
+    input.value = "";
+    state.hfTokenMasked = r.hf_token_masked || "";
+    renderSettingsState();
+    setStatus($("#hf-token-msg"), t("hf_saved"), "ok");
+    testHfToken();  // lo validamos contra HuggingFace nada más guardarlo
+  } catch (e) {
+    setStatus($("#hf-token-msg"), errText(e.code, e.message, "huggingface"), "error");
+  }
+}
+
+async function testHfToken() {
+  const typed = $("#hf-token-input").value.trim();
+  const msg = $("#hf-token-msg");
+  setStatus(msg, t("hf_testing"));
+  try {
+    const r = await postJSON(`${API}/settings/hf_token/test`, typed ? { token: typed } : {});
+    let text = t("hf_test_ok", { user: r.user || "?", role: r.role || "?" });
+    const canWrite = r.role === "write";
+    if (canWrite) text += " " + t("hf_test_write_warn");
+    setStatus(msg, text, canWrite ? "" : "ok");
+  } catch (e) {
+    setStatus(msg, errText(e.code, e.message, "huggingface"), "error");
+  }
+}
+
+async function removeHfToken() {
+  try {
+    await postJSON(`${API}/settings/hf_token/clear`, {});
+    state.hfTokenMasked = "";
+    renderSettingsState();
+    setStatus($("#hf-token-msg"), t("hf_removed"), "ok");
+  } catch (e) {
+    setStatus($("#hf-token-msg"), errText(e.code, e.message, "huggingface"), "error");
+  }
 }
 
 // ---------- carga inicial ----------
@@ -388,7 +531,7 @@ async function analyzeRepo() {
   } catch (e) {
     state.files = [];
     $("#files-panel").classList.add("hidden");
-    setStatus(status, e.message, "error");
+    setStatus(status, errText(e.code, e.message, $("#provider").value), "error");
   } finally {
     $("#analyze").disabled = false;
   }
@@ -488,7 +631,7 @@ async function startDownload() {
     });
     pollJobs();
   } catch (e) {
-    setStatus($("#repo-status"), e.message, "error");
+    setStatus($("#repo-status"), errText(e.code, e.message, state.repo && state.repo.provider), "error");
   }
 }
 
@@ -525,7 +668,7 @@ function renderJobs(jobs) {
 
     const jobEl = el("div", { class: "job state-" + j.state },
       head,
-      el("div", { class: "job-meta" }, `${j.category} · ${meta}${speed}${j.error ? " · " + j.error : ""}`),
+      el("div", { class: "job-meta" }, `${j.category} · ${meta}${speed}${j.error ? " · " + errText(j.error_code, j.error, j.provider) : ""}`),
       el("div", { class: "bar" }, el("div", { style: `width:${pct}%` })),
     );
     box.appendChild(jobEl);
@@ -815,6 +958,13 @@ function wireEvents() {
   $("#help-btn").addEventListener("click", openHelp);
   $("#help-close").addEventListener("click", closeHelp);
   $("#help-modal").addEventListener("click", (e) => { if (e.target.id === "help-modal") closeHelp(); });
+  $("#settings-btn").addEventListener("click", openSettings);
+  $("#settings-close").addEventListener("click", closeSettings);
+  $("#settings-modal").addEventListener("click", (e) => { if (e.target.id === "settings-modal") closeSettings(); });
+  $("#hf-token-save").addEventListener("click", saveHfToken);
+  $("#hf-token-test").addEventListener("click", testHfToken);
+  $("#hf-token-remove").addEventListener("click", removeHfToken);
+  $("#hf-token-input").addEventListener("keydown", (e) => { if (e.key === "Enter") saveHfToken(); });
 }
 
 async function init() {
@@ -824,6 +974,7 @@ async function init() {
   await loadProviders();
   try { await loadFolders(); } catch (e) { setStatus($("#repo-status"), t("st_folders_err", { e: e.message }), "error"); }
   pollJobs();
+  loadSettings();  // solo para el indicador del ⚙ (verde si hay token)
 }
 
 init();

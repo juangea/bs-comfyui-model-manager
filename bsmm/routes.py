@@ -8,6 +8,7 @@ Todas las rutas cuelgan del prefijo `/bs_model_manager`.
 Nota: el módulo top-level `server` es el de ComfyUI (PromptServer). Nuestro paquete se llama
 `bsmm` precisamente para no ensombrecerlo.
 """
+import asyncio
 import logging
 import mimetypes
 import os
@@ -21,6 +22,7 @@ import folder_paths
 mimetypes.add_type("font/woff2", ".woff2")
 
 from . import models as models_mod
+from . import settings as settings_mod
 from .downloads import manager as dl_manager
 from .providers import get_provider, list_providers, ProviderError
 from .util import guess_category, human_size, is_weight_file, safe_join
@@ -39,8 +41,18 @@ routes = PromptServer.instance.routes
 
 
 # ----------------------------- helpers -----------------------------
-def _err(message, status=400):
-    return web.json_response({"error": str(message)}, status=status)
+def _err(message, status=400, code=None):
+    """Error JSON. `code` (o `message.code` si es un ProviderError) lo traduce la UI a EN/ES."""
+    body = {"error": str(message)}
+    code = code or getattr(message, "code", None)
+    if code:
+        body["code"] = code
+    return web.json_response(body, status=status)
+
+
+async def _in_thread(fn, *args):
+    """Ejecuta una llamada bloqueante (red) fuera del event loop para no congelar ComfyUI."""
+    return await asyncio.get_running_loop().run_in_executor(None, fn, *args)
 
 
 async def _body(request):
@@ -87,7 +99,7 @@ async def api_repo_list(request):
         repo_id, rev = provider.parse_slug(slug)
         if revision:
             rev = revision
-        files = provider.list_files(repo_id, rev)
+        files = await _in_thread(provider.list_files, repo_id, rev)
     except ProviderError as exc:
         return _err(exc, 400)
     except Exception as exc:
@@ -256,6 +268,57 @@ async def api_local_move(request):
     except Exception as exc:
         log.exception("api/local/move")
         return _err(exc, 500)
+
+
+# ----------------------------- API: ajustes (token OPCIONAL de HuggingFace) -----------------------------
+# El token nunca sale completo del servidor: la UI solo recibe si hay uno guardado y su máscara.
+def _settings_payload():
+    token = settings_mod.get_token("huggingface")
+    return {"hf_token_set": bool(token), "hf_token_masked": settings_mod.mask(token)}
+
+
+@routes.get(PREFIX + "/api/settings")
+async def api_settings(request):
+    return web.json_response(_settings_payload())
+
+
+@routes.post(PREFIX + "/api/settings/hf_token")
+async def api_settings_hf_token(request):
+    data = await _body(request)
+    try:
+        settings_mod.set_token("huggingface", data.get("token"))
+    except ValueError as exc:
+        return _err(exc, 400, code="token_format")
+    except OSError as exc:
+        log.exception("api/settings/hf_token")
+        return _err(f"No se pudo guardar el token: {exc}", 500)
+    return web.json_response(_settings_payload())
+
+
+@routes.post(PREFIX + "/api/settings/hf_token/clear")
+async def api_settings_hf_token_clear(request):
+    try:
+        settings_mod.clear_token("huggingface")
+    except OSError as exc:
+        return _err(f"No se pudo borrar el token: {exc}", 500)
+    return web.json_response(_settings_payload())
+
+
+@routes.post(PREFIX + "/api/settings/hf_token/test")
+async def api_settings_hf_token_test(request):
+    """Comprueba contra HuggingFace el token escrito (sin guardarlo) o, si no, el guardado."""
+    data = await _body(request)
+    token = (data.get("token") or "").strip() or settings_mod.get_token("huggingface")
+    if not token:
+        return _err("No hay ningún token que probar.", 400, code="no_token")
+    try:
+        token = settings_mod.validate_hf_token(token)
+        info = await _in_thread(get_provider("huggingface").whoami, token)
+    except ValueError as exc:
+        return _err(exc, 400, code="token_format")
+    except ProviderError as exc:
+        return _err(exc, 400)
+    return web.json_response({"ok": True, "user": info.get("user"), "role": info.get("role")})
 
 
 # ----------------------------- API: modelos del workflow -----------------------------

@@ -27,6 +27,12 @@
       <button class="tab" data-view="manage" data-i18n="tab_manage">My models</button>
     </nav>
     <div class="header-right">
+      <button id="settings-btn" class="help-btn" aria-label="Settings" data-i18n-title="settings_tooltip" title="Settings / Ajustes">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="6.2" /><circle cx="12" cy="12" r="2.2" />
+          <path d="M12 2.6v3.2M12 18.2v3.2M2.6 12h3.2M18.2 12h3.2M5.4 5.4l2.2 2.2M16.4 16.4l2.2 2.2M5.4 18.6l2.2-2.2M16.4 7.6l2.2-2.2" />
+        </svg>
+      </button>
       <button id="help-btn" class="help-btn" aria-label="Help" data-i18n-title="help_tooltip" title="Help / Ayuda">?</button>
       <div class="lang-toggle" role="group" aria-label="Language">
         <button class="lang-btn" data-lang="en">EN</button>
@@ -136,6 +142,31 @@
       <div id="local-list"></div>
     </div>
   </section>
+
+  <!-- Settings (optional HuggingFace token) -->
+  <div id="settings-modal" class="modal hidden">
+    <div class="modal-card help-card">
+      <div class="help-head">
+        <div class="modal-title" data-i18n="settings_title">Settings</div>
+        <button id="settings-close" class="btn small" aria-label="Close">✕</button>
+      </div>
+      <div class="help-body">
+        <h4 data-i18n="hf_token_title">HuggingFace token (optional)</h4>
+        <p data-i18n="hf_token_desc"></p>
+        <p data-i18n-html="hf_token_how"></p>
+        <div id="hf-token-state" class="status"></div>
+        <div class="row toolbar token-row">
+          <input id="hf-token-input" class="grow-input" type="password" autocomplete="off" spellcheck="false"
+                 data-i18n-ph="hf_token_ph" placeholder="hf_…" />
+          <button id="hf-token-save" class="btn small primary" data-i18n="btn_save">Save</button>
+          <button id="hf-token-test" class="btn small" data-i18n="btn_test">Test</button>
+          <button id="hf-token-remove" class="btn small danger" data-i18n="btn_remove">Remove</button>
+        </div>
+        <div id="hf-token-msg" class="status"></div>
+        <p class="muted" data-i18n="hf_token_privacy"></p>
+      </div>
+    </div>
+  </div>
 
   <!-- Help / documentation -->
   <div id="help-modal" class="modal hidden">

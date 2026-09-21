@@ -21,8 +21,10 @@ sys.path.insert(0, HERE)   # para importar los módulos test_*
 import test_util          # noqa: E402
 import test_huggingface   # noqa: E402
 import test_models        # noqa: E402
+import test_settings      # noqa: E402
+import test_net           # noqa: E402
 
-MODULES = [test_util, test_huggingface, test_models]
+MODULES = [test_util, test_huggingface, test_models, test_settings, test_net]
 
 
 def run():

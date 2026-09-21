@@ -34,13 +34,17 @@ A unified list of all your local models (including `extra_model_paths.yaml` loca
 
 - **Downloader** — paste a HuggingFace repo (`owner/name`) or URL, **Analyze**, and pick exactly which
   files to download. Choose the **destination folder** (`checkpoints`, `vae`, `diffusion_models`, `loras`,
-  `text_encoders`, …) and an optional **subfolder**; rename on the fly. **No HuggingFace API key.**
+  `text_encoders`, …) and an optional **subfolder**; rename on the fly. **No HuggingFace API key needed** (an optional token unlocks gated/private models).
   Large files download in the background with **progress, speed and automatic resume**. Multi-term filter
   (e.g. `fp16 2.2`).
 - **From workflow** — scans the open workflow's declared models (`properties.models`) and lists the ones
   you don't have, resolved to the right repo + destination, one click away from downloading.
 - **My models** — unified view of every local model grouped by folder, including paths added via
   `extra_model_paths.yaml` (tagged **extra**). **Move** between folders or **Delete**. Multi-term search.
+- **Optional HuggingFace token** (⚙ Settings) — only for gated or private models (e.g. FLUX.1-dev) and
+  higher download limits. Stored on the ComfyUI server (outside this node's folder), never shown again in
+  full and only sent to huggingface.co. Download errors now tell you whether it's a token, licence or
+  rate-limit problem.
 - **Own UI** in an iframe (doesn't use the node graph) → won't break with **Nodes 2.0**. **Bilingual EN/ES**
   with in-app help.
 - **Civitai-ready**: pluggable provider architecture (Civitai stub included, not yet implemented).
@@ -59,7 +63,7 @@ Manager"** → Install, then restart ComfyUI.
 2. **From workflow** — *Scan workflow* → *Load & mark* on a missing model → *Download selected*.
 3. **My models** — *Move* or *Delete*; search with multiple terms.
 
-Use the **?** icon (top-right, next to EN/ES) for in-app help.
+Use the **?** icon (top-right, next to EN/ES) for in-app help, and **⚙** to add an optional HuggingFace token.
 
 ---
 

@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-only
 # Copyright (C) 2026 Enob-Studio S.L. and Juan Gea
-"""Proveedor de HuggingFace usando solo la stdlib (urllib). Sin API key.
+"""Proveedor de HuggingFace usando solo la stdlib (urllib). Token OPCIONAL (ver settings.py).
 
 API pública usada:
   - Listado de archivos:
@@ -14,10 +14,12 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+from ..net import http_error_code, urlopen
+from ..settings import get_token
 from .base import Provider, FileEntry, ProviderError
 
 HF_HOST = "https://huggingface.co"
-USER_AGENT = "BS-ComfyUI-Model-Manager/1.0 (+stdlib)"
+USER_AGENT = "BS-ComfyUI-Model-Manager/1.0.5 (+stdlib)"
 
 
 def _parse_next_link(link_header):
@@ -130,28 +132,61 @@ class HuggingFaceProvider(Provider):
             f"{HF_HOST}/{repo_id}/resolve/"
             f"{urllib.parse.quote(revision, safe='')}/{safe_path}"
         )
-        return url, {"User-Agent": USER_AGENT}
+        return url, self._headers()
+
+    def _headers(self, accept_json=False):
+        """Cabeceras de cada petición. El token (OPCIONAL) solo se añade si el usuario lo guardó."""
+        headers = {"User-Agent": USER_AGENT}
+        if accept_json:
+            headers["Accept"] = "application/json"
+        token = get_token("huggingface")
+        if token:
+            headers["Authorization"] = "Bearer " + token
+        return headers
+
+    def whoami(self, token):
+        """Valida un token contra HuggingFace. Devuelve {user, role} (role: read/write/fineGrained)."""
+        req = urllib.request.Request(
+            f"{HF_HOST}/api/whoami-v2",
+            headers={"User-Agent": USER_AGENT, "Authorization": "Bearer " + token},
+        )
+        try:
+            with urlopen(req, timeout=20) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+        except urllib.error.HTTPError as exc:
+            raise ProviderError(f"HuggingFace rechazó el token (HTTP {exc.code}).",
+                                code=http_error_code(exc.code, True))
+        except urllib.error.URLError as exc:
+            raise ProviderError(f"No se pudo conectar con HuggingFace: {exc.reason}", code="network")
+        access = ((data.get("auth") or {}).get("accessToken") or {})
+        return {"user": data.get("name"), "role": access.get("role")}
 
     # --- interno ---
     def _get_json(self, url, repo_id):
-        req = urllib.request.Request(
-            url, headers={"User-Agent": USER_AGENT, "Accept": "application/json"}
-        )
+        headers = self._headers(accept_json=True)
+        req = urllib.request.Request(url, headers=headers)
         try:
-            with urllib.request.urlopen(req, timeout=30) as resp:
+            with urlopen(req, timeout=30) as resp:
                 body = resp.read().decode("utf-8")
                 link = resp.headers.get("Link")
         except urllib.error.HTTPError as exc:
-            if exc.code == 401:
-                raise ProviderError(
-                    f"'{repo_id}' es privado o requiere autenticación (HTTP 401). "
-                    "Por ahora solo se admiten repos públicos."
-                )
-            if exc.code == 404:
-                raise ProviderError(f"Repositorio no encontrado en HuggingFace: '{repo_id}' (HTTP 404).")
-            raise ProviderError(f"HuggingFace devolvió HTTP {exc.code} al listar '{repo_id}'.")
+            code = http_error_code(exc.code, "Authorization" in headers)
+            messages = {
+                "auth_required": f"'{repo_id}' requiere autenticación (repo privado o gated): "
+                                 "añade un token de HuggingFace en Ajustes.",
+                "token_rejected": f"HuggingFace rechazó tu token al listar '{repo_id}' (HTTP 401).",
+                "forbidden": f"Tu cuenta de HuggingFace no tiene acceso a '{repo_id}' (HTTP 403): "
+                             "acepta su licencia en huggingface.co.",
+                "not_found": f"Repositorio no encontrado en HuggingFace: '{repo_id}' (HTTP 404).",
+                "rate_limited": "HuggingFace está limitando las peticiones (HTTP 429): espera unos "
+                                "minutos o añade un token.",
+            }
+            raise ProviderError(
+                messages.get(code, f"HuggingFace devolvió HTTP {exc.code} al listar '{repo_id}'."),
+                code=code,
+            )
         except urllib.error.URLError as exc:
-            raise ProviderError(f"No se pudo conectar con HuggingFace: {exc.reason}")
+            raise ProviderError(f"No se pudo conectar con HuggingFace: {exc.reason}", code="network")
         try:
             return json.loads(body), link
         except json.JSONDecodeError:
